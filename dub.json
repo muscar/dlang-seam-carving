@@ -1,0 +1,9 @@
+{
+	"name": "seam-carving",
+	"authors": [
+		"Alex Muscar"
+	],
+	"description": "A minimal D application.",
+	"copyright": "Copyright © 2017, Alex Muscar",
+	"license": "3-Clause BSD"
+}
