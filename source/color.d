@@ -151,6 +151,11 @@ struct Color {
 		return Color(red, green, blue, alpha);
 	}
 
+    nothrow pure
+    static Color fromComponents(ubyte[4] components) {
+        return Color(components[0], components[1], components[2], components[3]);
+    }
+
 	/// Construct a color with the given values. They should be in range 0 <= x <= 255, where 255 is maximum intensity and 0 is minimum intensity.
 	nothrow pure @nogc
 	this(int red, int green, int blue, int alpha = 255) {
