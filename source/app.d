@@ -2,6 +2,7 @@ import std.algorithm.comparison;
 import std.conv;
 import std.math;
 import std.stdio;
+import std.traits;
 import std.typecons;
 
 import arsd.png;
@@ -37,17 +38,31 @@ auto decompose(MemoryImage img)
     return tuple!("red", "green", "blue")(rimg, gimg, bimg);
 }
 
-auto filter3x3(S)(MemoryImage image, immutable int[][] kernel, S s)
+template KernelLoop(alias acc, alias image, int[][] kernel, alias imgX, alias imgY, int x = 0, int y = 0)
+{
+    immutable auto accName = acc.stringof;
+    immutable auto imageName = image.stringof;
+    immutable auto imgXName = imgX.stringof;
+    immutable auto imgYName = imgY.stringof;
+
+    static if (y < kernel.length) {
+        static if (x < kernel[0].length - 1) {
+            const KernelLoop = "accumulate(" ~ accName ~ ", " ~ imageName ~ ".getPixel(" ~ imgXName ~ " + " ~ to!string(x - 1) ~ ", " ~ imgYName ~ " + " ~ to!string(y - 1) ~ ").components, " ~ to!string(kernel[y][x]) ~ ");\n" ~ KernelLoop!(acc, image, kernel, imgX, imgY, x + 1, y);
+        } else {
+            const KernelLoop = "accumulate(" ~ accName ~ ", " ~ imageName ~ ".getPixel(" ~ imgXName ~ " + " ~ to!string(x - 1) ~ ", " ~ imgYName ~ " + " ~ to!string(y - 1) ~ ").components, " ~ to!string(kernel[y][x]) ~ ");\n" ~ KernelLoop!(acc, image, kernel, imgX, imgY, 0, y + 1);
+        }
+    } else {
+        const KernelLoop = "";
+    }
+}
+
+auto filter(int[][] K, S)(MemoryImage image, S s)
 {
     auto res = new TrueColorImage(image.width, image.height);
     foreach (x; 1..image.width - 1) {
         foreach (y; 1..image.height - 1) {
             int[4] acc = [0, 0, 0, 255];
-            foreach (ky; 0..3) {
-                foreach (kx; 0..3) {
-                    accumulate(acc, image.getPixel(x + kx - 1, y + ky - 1).components, kernel[ky][kx]);
-                }
-            }
+            mixin(KernelLoop!(acc, image, K, x, y));
             foreach (ref c; acc) {
                 c = s(c);
             }
@@ -64,11 +79,11 @@ auto accumulate(ref int[4] acc, immutable ubyte[4] c, int k)
     acc[2] += c[2] * k;
 }
 
-auto gradients(MemoryImage image, immutable int[][] hKernel, immutable int[][] vKernel)
+auto gradients(int[][] K1, int[][] K2)(MemoryImage image)
 {
     auto res = new TrueColorImage(image.width, image.height);
-    auto hGrad = filter3x3(image, hKernel, (int v) => clamp(v, 0, 255));
-    auto vGrad = filter3x3(image, vKernel, (int v) => clamp(v, 0, 255));
+    auto hGrad = filter!K1(image, (int v) => clamp(v, 0, 255));
+    auto vGrad = filter!K2(image, (int v) => clamp(v, 0, 255));
     foreach (x; 0..image.width) {
         foreach (y; 0..image.height) {
             float h = hGrad.getPixel(x, y).r;
@@ -82,7 +97,7 @@ auto gradients(MemoryImage image, immutable int[][] hKernel, immutable int[][] v
 
 auto sobelGradients(MemoryImage image)
 {
-    return gradients(image, sobelX, sobelY);
+    return gradients!(sobelX, sobelY)(image);
 }
 
 auto combine(MemoryImage redge, MemoryImage gedge, MemoryImage bedge)
@@ -102,6 +117,8 @@ auto combine(MemoryImage redge, MemoryImage gedge, MemoryImage bedge)
 
 void main(string[] args)
 {
+    // int acc, image, x, y;
+    // writeln(KernelLoop!(acc, image, sobelX, x, y));
     auto img = readPng(args[1]);
     auto channels = img.decompose;
 
