@@ -1,5 +1,6 @@
 import std.algorithm.comparison;
 import std.conv;
+import std.format;
 import std.math;
 import std.stdio;
 import std.traits;
@@ -38,21 +39,18 @@ auto decompose(MemoryImage img)
     return tuple!("red", "green", "blue")(rimg, gimg, bimg);
 }
 
-template KernelLoop(alias acc, alias image, int[][] kernel, alias imgX, alias imgY, int x = 0, int y = 0)
+template Convolve(alias acc, alias image, int[][] kernel, alias imgX, alias imgY, int x = 0, int y = 0)
 {
-    immutable auto accName = acc.stringof;
-    immutable auto imageName = image.stringof;
-    immutable auto imgXName = imgX.stringof;
-    immutable auto imgYName = imgY.stringof;
-
     static if (y < kernel.length) {
+        immutable auto k = kernel[y][x];
+        immutable auto accumulateCall = k != 0 ? "accumulate(%s, %s.getPixel(%s + %d, %s + %d).components, %d);\n".format(acc.stringof, image.stringof, imgX.stringof, x - 1, imgY.stringof, y - 1, k) : "";
         static if (x < kernel[0].length - 1) {
-            const KernelLoop = "accumulate(" ~ accName ~ ", " ~ imageName ~ ".getPixel(" ~ imgXName ~ " + " ~ to!string(x - 1) ~ ", " ~ imgYName ~ " + " ~ to!string(y - 1) ~ ").components, " ~ to!string(kernel[y][x]) ~ ");\n" ~ KernelLoop!(acc, image, kernel, imgX, imgY, x + 1, y);
+            const Convolve = accumulateCall ~ Convolve!(acc, image, kernel, imgX, imgY, x + 1, y);
         } else {
-            const KernelLoop = "accumulate(" ~ accName ~ ", " ~ imageName ~ ".getPixel(" ~ imgXName ~ " + " ~ to!string(x - 1) ~ ", " ~ imgYName ~ " + " ~ to!string(y - 1) ~ ").components, " ~ to!string(kernel[y][x]) ~ ");\n" ~ KernelLoop!(acc, image, kernel, imgX, imgY, 0, y + 1);
+            const Convolve = accumulateCall ~ Convolve!(acc, image, kernel, imgX, imgY, 0, y + 1);
         }
     } else {
-        const KernelLoop = "";
+        const Convolve = "";
     }
 }
 
@@ -62,7 +60,7 @@ auto filter(int[][] K, S)(MemoryImage image, S s)
     foreach (x; 1..image.width - 1) {
         foreach (y; 1..image.height - 1) {
             int[4] acc = [0, 0, 0, 255];
-            mixin(KernelLoop!(acc, image, K, x, y));
+            mixin(Convolve!(acc, image, K, x, y));
             foreach (ref c; acc) {
                 c = s(c);
             }
@@ -117,8 +115,8 @@ auto combine(MemoryImage redge, MemoryImage gedge, MemoryImage bedge)
 
 void main(string[] args)
 {
-    // int acc, image, x, y;
-    // writeln(KernelLoop!(acc, image, sobelX, x, y));
+    int acc, image, x, y;
+    writeln(Convolve!(acc, image, sobelX, x, y));
     auto img = readPng(args[1]);
     auto channels = img.decompose;
 
