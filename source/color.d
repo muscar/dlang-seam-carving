@@ -783,6 +783,8 @@ interface MemoryImage {
   /// Set image pixel.
 	void setPixel(int x, int y, in Color clr);
 
+    const(ubyte)[] getData() const;
+
 	/// Load image from file. This will import arsd.png and arsd.jpeg to do the actual work, and cost nothing if you don't use it.
 	static MemoryImage fromImage(T : const(char)[]) (T filename) @trusted {
 		static if (__traits(compiles, {import arsd.jpeg;})) {
@@ -864,6 +866,10 @@ class IndexedImage : MemoryImage {
 			data.ptr[pos] = pidx;
 		}
 	}
+
+    override const(ubyte)[] getData() const {
+        return data;
+    }
 
 	private int _width;
 	private int _height;
@@ -978,6 +984,10 @@ class TrueColorImage : MemoryImage {
 			if (pos < imageData.bytes.length/4) imageData.colors.ptr[pos] = clr;
 		}
 	}
+
+    override const(ubyte)[] getData() const {
+        return imageData.bytes;
+    }
 
 	/// .
 	this(int w, int h) {

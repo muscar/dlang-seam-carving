@@ -59,22 +59,20 @@ auto filter(int[][] K, S)(MemoryImage image, S s)
     auto res = new TrueColorImage(image.width, image.height);
     foreach (x; 1..image.width - 1) {
         foreach (y; 1..image.height - 1) {
-            int[4] acc = [0, 0, 0, 255];
+            int[4] acc = [0, 0, 0, 0];
             mixin(Convolve!(acc, image, K, x, y));
             foreach (ref c; acc) {
                 c = s(c);
             }
-            res.setPixel(x, y, Color.fromComponents(acc.to!(ubyte[4])));
+            res.setPixel(x, y, Color(acc[0], acc[1], acc[2]));
         }
     }
     return res;
 }
 
-auto accumulate(ref int[4] acc, immutable ubyte[4] c, int k)
+auto accumulate(ref int[4] acc, immutable ubyte[4] c, int k) pure @nogc
 {
-    acc[0] += c[0] * k;
-    acc[1] += c[1] * k;
-    acc[2] += c[2] * k;
+    acc[] += c[] * k;
 }
 
 auto gradients(int[][] K1, int[][] K2)(MemoryImage image)
